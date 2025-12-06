@@ -1,0 +1,303 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define CREDENTIAL_FILE "credentials.txt"
+#define BOOK_FILE "books.txt"
+#define MAX 100   // Stack max size
+
+struct Book {
+    int id;
+    char title[50];
+    char author[50];
+    int quantity;
+};
+
+struct Book stack[MAX];  // Stack
+int top = -1;
+
+char currentUser[20];
+char currentRole[20];
+
+/* Function Declarations */
+void createCredentials();
+int loginSystem();
+void mainMenu();
+void adminMenu();
+void userMenu();
+void loadBooksFromFile();
+void saveBooksToFile();
+
+/* Stack Operations */
+void pushBook();
+void popBook();
+struct Book peekBook();
+
+/* Extra operations */
+void displayBooks();
+void searchBook();
+void updateBook();
+void deleteBookByID();
+
+/* ------------------- MAIN ---------------------- */
+int main() {
+
+    createCredentials();
+    loadBooksFromFile();
+
+    if (loginSystem())
+        mainMenu();
+    else
+        printf("Login failed!\n");
+
+    saveBooksToFile();
+    return 0;
+}
+
+/* ----------------- CREATE CREDENTIALS ----------------- */
+void createCredentials() {
+    char choice, user[20], pass[20], role[10];
+    printf("Create login credentials? (y/n): ");
+    scanf(" %c", &choice);
+
+    if (choice == 'y' || choice == 'Y') {
+        printf("Enter new username: ");
+        scanf("%s", user);
+        printf("Enter new password: ");
+        scanf("%s", pass);
+        printf("Enter role (admin/user): ");
+        scanf("%s", role);
+
+        FILE *fp = fopen(CREDENTIAL_FILE, "w");
+        fprintf(fp, "%s %s %s\n", user, pass, role);
+        fclose(fp);
+    }
+
+    FILE *f = fopen(BOOK_FILE, "a+");
+    fclose(f);
+}
+
+/* ---------------------- LOGIN ------------------------ */
+int loginSystem() {
+    char username[20], password[20], u[20], p[20], r[20];
+
+    printf("\n--- LOGIN ---\n");
+    printf("Username: ");
+    scanf("%s", username);
+    printf("Password: ");
+    scanf("%s", password);
+
+    FILE *fp = fopen(CREDENTIAL_FILE, "r");
+    while (fscanf(fp, "%s %s %s", u, p, r) != EOF) {
+        if (!strcmp(username, u) && !strcmp(password, p)) {
+            strcpy(currentUser, u);
+            strcpy(currentRole, r);
+            fclose(fp);
+            return 1;
+        }
+    }
+    fclose(fp);
+    return 0;
+}
+
+/* ------------------ LOAD STACK FROM FILE ------------------ */
+void loadBooksFromFile() {
+    FILE *fp = fopen(BOOK_FILE, "r");
+    if (!fp) return;
+
+    struct Book temp;
+    while (fscanf(fp, "%d %s %s %d",
+                  &temp.id, temp.title, temp.author, &temp.quantity) != EOF) {
+        if (top < MAX - 1) {
+            stack[++top] = temp;
+        }
+    }
+    fclose(fp);
+}
+
+/* ------------------ SAVE STACK TO FILE ------------------ */
+void saveBooksToFile() {
+    FILE *fp = fopen(BOOK_FILE, "w");
+
+    for (int i = 0; i <= top; i++) {
+        fprintf(fp, "%d %s %s %d\n",
+                stack[i].id,
+                stack[i].title,
+                stack[i].author,
+                stack[i].quantity);
+    }
+    fclose(fp);
+}
+
+/* ------------------ MAIN MENU ------------------ */
+void mainMenu() {
+    if (strcmp(currentRole, "admin") == 0)
+        adminMenu();
+    else
+        userMenu();
+}
+
+/* -------------------- ADMIN MENU -------------------- */
+void adminMenu() {
+    int ch;
+    do {
+        printf("\n===== ADMIN MENU =====\n");
+        printf("1. Push Book (Add)\n");
+        printf("2. Pop Book (Delete top)\n");
+        printf("3. Peek Book\n");
+        printf("4. Display All\n");
+        printf("5. Search Book\n");
+        printf("6. Update Book\n");
+        printf("7. Delete Book by ID\n");
+        printf("8. Logout\n");
+        printf("Enter choice: ");
+        scanf("%d", &ch);
+
+        switch (ch) {
+            case 1: pushBook(); break;
+            case 2: popBook(); break;
+            case 3: {
+                struct Book b = peekBook();
+                if (top != -1)
+                    printf("Top Book → %d %s %s %d\n",
+                        b.id, b.title, b.author, b.quantity);
+                break;
+            }
+            case 4: displayBooks(); break;
+            case 5: searchBook(); break;
+            case 6: updateBook(); break;
+            case 7: deleteBookByID(); break;
+            case 8: return;
+            default: printf("Invalid!\n");
+        }
+    } while (1);
+}
+
+/* -------------------- USER MENU -------------------- */
+void userMenu() {
+    int ch;
+    do {
+        printf("\n===== USER MENU =====\n");
+        printf("1. Display Books\n");
+        printf("2. Search Book\n");
+        printf("3. Logout\n");
+        printf("Enter choice: ");
+        scanf("%d", &ch);
+
+        switch (ch) {
+            case 1: displayBooks(); break;
+            case 2: searchBook(); break;
+            case 3: return;
+            default: printf("Invalid!\n");
+        }
+    } while (1);
+}
+
+/* ------------------ STACK OPERATIONS ------------------- */
+void pushBook() {
+    if (top == MAX - 1) {
+        printf("Stack full!\n");
+        return;
+    }
+
+    top++;
+    printf("Enter Book ID: ");
+    scanf("%d", &stack[top].id);
+    printf("Enter Title: ");
+    scanf("%s", stack[top].title);
+    printf("Enter Author: ");
+    scanf("%s", stack[top].author);
+    printf("Enter Quantity: ");
+    scanf("%d", &stack[top].quantity);
+
+    printf("Book pushed onto stack!\n");
+}
+
+void popBook() {
+    if (top == -1) {
+        printf("Stack empty!\n");
+        return;
+    }
+
+    printf("Popped Book: %d %s\n", stack[top].id, stack[top].title);
+    top--;
+}
+
+struct Book peekBook() {
+    if (top == -1) {
+        printf("Stack empty!\n");
+        struct Book empty = {-1, "", "", 0};
+        return empty;
+    }
+    return stack[top];
+}
+
+/* ---------------- EXTRA OPERATIONS ---------------- */
+void displayBooks() {
+    if (top == -1) {
+        printf("No books!\n");
+        return;
+    }
+
+    printf("\nID\tTitle\tAuthor\tQty\n");
+    printf("-----------------------------------\n");
+    for (int i = 0; i <= top; i++) {
+        printf("%d\t%s\t%s\t%d\n",
+            stack[i].id,
+            stack[i].title,
+            stack[i].author,
+            stack[i].quantity);
+    }
+}
+
+void searchBook() {
+    int id;
+    printf("Enter Book ID: ");
+    scanf("%d", &id);
+
+    for (int i = 0; i <= top; i++) {
+        if (stack[i].id == id) {
+            printf("Found: %d %s %s %d\n",
+                stack[i].id, stack[i].title, stack[i].author, stack[i].quantity);
+            return;
+        }
+    }
+    printf("Not found!\n");
+}
+
+void updateBook() {
+    int id;
+    printf("Enter Book ID to update: ");
+    scanf("%d", &id);
+
+    for (int i = 0; i <= top; i++) {
+        if (stack[i].id == id) {
+            printf("Enter new Title: ");
+            scanf("%s", stack[i].title);
+            printf("Enter new Author: ");
+            scanf("%s", stack[i].author);
+            printf("Enter new Quantity: ");
+            scanf("%d", &stack[i].quantity);
+            printf("Updated!\n");
+            return;
+        }
+    }
+    printf("ID not found!\n");
+}
+
+void deleteBookByID() {
+    int id, i, j;
+    printf("Enter Book ID to delete: ");
+    scanf("%d", &id);
+
+    for (i = 0; i <= top; i++) {
+        if (stack[i].id == id) {
+            for (j = i; j < top; j++)
+                stack[j] = stack[j + 1];
+            top--;
+            printf("Deleted!\n");
+            return;
+        }
+    }
+    printf("Book ID not found!\n");
+}
